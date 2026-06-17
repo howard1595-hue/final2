@@ -1,0 +1,44 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Representative of a system user or photographer",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user unique identifier" },
+        "name": { "type": "string", "description": "Display name of the user" },
+        "email": { "type": "string", "description": "Electronic mail address" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "The date-time when profile was registered" },
+        "emailVerified": { "type": "boolean", "description": "Email verification flag" },
+        "authProvider": { "type": "string", "enum": ["google", "password"], "description": "Authenticating method" }
+      },
+      "required": ["uid", "name", "email", "createdAt"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "Representative of a photography showcase item",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Title of the photography work" },
+        "description": { "type": "string", "description": "Detailed description and configuration details" },
+        "category": { "type": "string", "description": "Filterable category descriptor" },
+        "location": { "type": "string", "description": "Physical location where image was captured" },
+        "shootDate": { "type": "string", "description": "The date of capture" },
+        "imageUrl": { "type": "string", "description": "The dynamic URL pointing to the image asset" },
+        "userId": { "type": "string", "description": "The user UID of the creator" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Metadata creation timestamp" }
+      },
+      "required": ["title", "description", "category", "location", "shootDate", "imageUrl", "userId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Collection where user profiles are stored under their respective auth UID"
+    },
+    "/photos/{photoId}": {
+      "schema": "Photo",
+      "description": "A flat photography showcase collection available for read publicly and write by owner"
+    }
+  }
+}

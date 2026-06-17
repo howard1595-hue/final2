@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.email is string && data.email.size() <= 200 &&
+             data.createdAt is string && data.createdAt.size() <= 100 &&
+             data.emailVerified is bool &&
+             data.authProvider is string && (data.authProvider == 'google' || data.authProvider == 'password');
+    }
+
+    function isValidPhoto(data) {
+      return data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.category is string && data.category.size() <= 100 &&
+             data.location is string && data.location.size() <= 200 &&
+             data.shootDate is string && data.shootDate.size() <= 100 &&
+             data.imageUrl is string && data.imageUrl.size() <= 2000 &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.createdAt is string && data.createdAt.size() <= 100;
+    }
+
+    // Match Rules for UserProfile
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId) && isValidId(userId);
+      allow create: if isSignedIn() && (request.auth.uid == userId) && isValidId(userId) &&
+                    isValidUserProfile(incoming()) &&
+                    incoming().keys().hasAll(['uid', 'name', 'email', 'createdAt', 'emailVerified', 'authProvider']) &&
+                    incoming().keys().size() == 6;
+      allow update: if isSignedIn() && (request.auth.uid == userId) && isValidId(userId) &&
+                    isValidUserProfile(incoming()) &&
+                    incoming().uid == existing().uid &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().email == existing().email &&
+                    incoming().authProvider == existing().authProvider &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['name', 'emailVerified']);
+      allow delete: if false;
+    }
+
+    // Match Rules for Photo
+    match /photos/{photoId} {
+      allow read: if true; // Photos are public and viewable by any user
+      allow create: if isSignedIn() && isValidId(photoId) &&
+                    isValidPhoto(incoming()) &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().keys().hasAll(['title', 'description', 'category', 'location', 'shootDate', 'imageUrl', 'userId', 'createdAt']) &&
+                    incoming().keys().size() == 8;
+      allow update: if isSignedIn() && isValidId(photoId) &&
+                    isValidPhoto(incoming()) &&
+                    existing().userId == request.auth.uid &&
+                    incoming().userId == request.auth.uid &&
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'category', 'location', 'shootDate', 'imageUrl']);
+      allow delete: if isSignedIn() && isValidId(photoId) &&
+                    existing().userId == request.auth.uid;
+    }
+  }
+}
